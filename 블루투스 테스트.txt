@@ -1,0 +1,127 @@
+블루투스 연구
+
+#include <SoftwareSerial.h>
+
+SoftwareSerial BTSerial(2, 3);   //bluetooth module Tx:Digital 2 Rx:Digital 3
+
+int SensorPin = A0; //analog pin 0
+
+void setup() {
+  pinMode(8, OUTPUT);    //HC-05
+  digitalWrite(8,HIGH);
+  
+  Serial.begin(9600);
+  BTSerial.begin(9600);
+  
+}
+
+void loop() {          
+
+  int SensorReading = analogRead(SensorPin);
+  int mfsr_r18 = map(SensorReading, 0, 1024, 0, 255);
+  Serial.println(mfsr_r18);
+
+    if(mfsr_r18>30)
+  {
+    tone(11,261,500);
+    delay(500);
+  }
+
+  BTSerial.write("hello");
+  // BTSerial.println("0");
+  // if (BTSerial.available())
+  //   Serial.write(BTSerial.read());
+  // if (Serial.available())
+  //   BTSerial.write(mfsr_r18);
+
+}
+
+
+--------------------------------------------------
+#include <DFRobot_TFmini.h>
+#include "HX711.h"  
+
+// HX711 circuit wiring
+const int LOADCELL_DOUT_PIN_1 = 22;
+const int LOADCELL_SCK_PIN_1 = 2;
+
+const int LOADCELL_DOUT_PIN_2 = 23;
+const int LOADCELL_SCK_PIN_2 = 3;
+
+int SensorPin = A0; //analog pin 0
+
+HX711 scale1;
+HX711 scale2;
+
+SoftwareSerial mySerial(10, 11); // RX, TX  *****메가에서는 serial 통신할때 10~15까지만 가능*******
+
+DFRobot_TFmini  TFmini;
+uint16_t distance, strength;   // 거리와 강도를 담는 변수
+
+void setup() {
+  Serial.begin(115200);
+  Serial.print("asdf");
+  TFmini.begin(mySerial);
+  pinMode(34,1);
+  pinMode(35,1);
+  scale1.begin(LOADCELL_DOUT_PIN_1, LOADCELL_SCK_PIN_1);
+  scale2.begin(LOADCELL_DOUT_PIN_2, LOADCELL_SCK_PIN_2);
+   scale1.set_scale(2280.f);                     
+   scale1.tare();
+   scale2.set_scale(2280.f);                     
+   scale2.tare();
+}
+
+void loop() {
+  
+  digitalWrite(34,1);
+  digitalWrite(35,0);
+  analogWrite(5,255);
+  
+ int SensorReading = analogRead(SensorPin);
+  int mfsr_r18 = map(SensorReading, 0, 1024, 0, 255);
+
+  Serial.println(mfsr_r18);
+
+   if(mfsr_r18>30)
+  {
+    tone(4,261,500);
+    delay(500);
+  }
+  
+  double x = scale1.get_units(1);
+  double y = scale2.get_units(1);
+
+  double weight1 = 0.08*x*x*x - 1.17*x*x + 71.99*x ;       // 수식 y=0.08*x^3 - 1.17*x^2 + 71.99*x
+  double weight2 = 0.08*y*y*y - 1.17*y*y + 71.99*y ;  
+  double weight3 = weight1 + weight2;
+
+  Serial.print("Weight : ");
+  Serial.print(weight3,1);
+  Serial.println("g");
+
+  if(weight3>7000)
+  {
+    tone(4,261,5000);
+    digitalWrite(34,1);
+    digitalWrite(35,0);
+    analogWrite(5,50);
+    delay(3000);
+
+  }
+
+  if (TFmini.measure()) {                  // 거리와 신호의 강도를 측정합니다. 성공하면 을 반환하여 if문이 작동합니다.
+    distance = TFmini.getDistance();       // 거리값을 cm단위로 불러옵니다.
+    strength = TFmini.getStrength();       // 신호의 강도를 불러옵니다. 측정 대상이 넓으면 강도가 커집니다.
+
+    Serial.print("Distance = ");
+    Serial.print(distance);
+    Serial.println("cm");
+    if(distance<100)
+    {
+      tone(4,261,1000);
+    }
+
+  }
+  delay(100);
+}
